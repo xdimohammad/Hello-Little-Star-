@@ -1,3 +1,4 @@
+
 const $ = (id) => document.getElementById(id);
 
 const app = $("app");
@@ -23,7 +24,6 @@ let answered = false;
 let praiseIndex = 0;
 let firstInteraction = false;
 
-// Prevent multiple animal sounds from playing together
 let animalSoundPlaying = false;
 
 const praiseMessages = [
@@ -82,7 +82,6 @@ function playAnimalSound(animal) {
       return;
     }
 
-    // Stop previous animal sound
     if (currentAnimalSound) {
       currentAnimalSound.pause();
       currentAnimalSound.currentTime = 0;
@@ -101,7 +100,6 @@ function playAnimalSound(animal) {
 
     let finished = false;
 
-    // Finish only once
     function finishSound() {
       if (finished) return;
       finished = true;
@@ -120,7 +118,6 @@ function playAnimalSound(animal) {
       resolve();
     }
 
-    // Wait for the real recording to finish
     sound.addEventListener("ended", finishSound);
     sound.addEventListener("error", finishSound);
 
@@ -133,7 +130,6 @@ function playAnimalSound(animal) {
       });
     }
 
-    // Safety limit for longer recordings
     const duration =
       animal === "monkey" ? 4 :
       animal === "rabbit" ? 4 :
@@ -499,6 +495,7 @@ function playMusicNote(frequency, duration = 0.42) {
     0.12,
     audioContext.currentTime + 0.06
   );
+
   noteGain.gain.exponentialRampToValueAtTime(
     0.0001,
     audioContext.currentTime + duration
@@ -519,6 +516,7 @@ function startMusic() {
   musicButton.textContent = "🎵";
 
   masterMusicGain.gain.cancelScheduledValues(audioContext.currentTime);
+
   masterMusicGain.gain.setTargetAtTime(
     0.055,
     audioContext.currentTime,
@@ -527,6 +525,7 @@ function startMusic() {
 
   musicTimer = setInterval(() => {
     if (!musicEnabled) return;
+
     playMusicNote(melody[musicStep], 0.42);
     musicStep = (musicStep + 1) % melody.length;
   }, 460);
@@ -586,12 +585,14 @@ function playWrongSound() {
 
   oscillator.type = "sine";
   oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+
   oscillator.frequency.exponentialRampToValueAtTime(
     220,
     audioContext.currentTime + 0.18
   );
 
   gain.gain.setValueAtTime(0.09, audioContext.currentTime);
+
   gain.gain.exponentialRampToValueAtTime(
     0.0001,
     audioContext.currentTime + 0.2
@@ -702,13 +703,11 @@ function makeAnswerButton(choice, category) {
 
       animalSoundPlaying = true;
 
-      // Stop any currently speaking voice
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
 
       playAnimalSound(value).then(() => {
-        // Wait 1 second AFTER the animal recording finishes
         setTimeout(() => {
           animalSoundPlaying = false;
           checkAnswer(value, button);
@@ -726,7 +725,6 @@ function makeAnswerButton(choice, category) {
 
 // GAME
 function chooseCategory(category) {
-  // Stop animal sound if changing category
   if (currentAnimalSound) {
     currentAnimalSound.pause();
     currentAnimalSound.currentTime = 0;
@@ -788,6 +786,7 @@ function loadQuestion() {
   // ANIMAL QUESTION
   else if (currentCategory === "animals") {
     const animal = item.correct;
+
     const visual = createAnimalImage(
       animal,
       "question-animal-image"
@@ -900,11 +899,11 @@ function finishGame() {
   speak("Amazing work! You did a wonderful job!", 0.85);
 }
 
-  
+// RETURN TO CATEGORY MENU
 function playAgain() {
   completionOverlay.classList.remove("show");
 
-  // Reset animal sound
+  // Stop animal sound
   if (currentAnimalSound) {
     currentAnimalSound.pause();
     currentAnimalSound.currentTime = 0;
@@ -922,17 +921,18 @@ function playAgain() {
     window.speechSynthesis.cancel();
   }
 
-  // Reset category selection
+  // Remove selected category
   document.querySelectorAll(".category-card").forEach(button => {
     button.classList.remove("active");
   });
 
+  // Reset game state
   currentCategory = null;
   currentQuestion = 0;
   correctAnswers = 0;
   answered = false;
 
-  // Return to category menu
+  // Show category menu
   gameTitle.textContent = "Let's Play!";
   categoryEmoji.textContent = "🌟";
   questionProgress.textContent = "Choose a learning category";
@@ -950,8 +950,6 @@ function playAgain() {
   nextButton.hidden = true;
 
   speak("Choose what to learn!", 0.85);
-}
-
 }
 
 // FULLSCREEN
