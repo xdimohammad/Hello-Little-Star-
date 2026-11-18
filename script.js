@@ -901,12 +901,58 @@ function finishGame() {
 }
 
 function playAgain() {
+  
+function playAgain() {
   completionOverlay.classList.remove("show");
+
+  // Reset animal sound
+  if (currentAnimalSound) {
+    currentAnimalSound.pause();
+    currentAnimalSound.currentTime = 0;
+  }
+
+  if (animalSoundStopTimer) {
+    clearTimeout(animalSoundStopTimer);
+    animalSoundStopTimer = null;
+  }
+
+  animalSoundPlaying = false;
+
+  // Stop current voice
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  // Reset category selection
+  document.querySelectorAll(".category-card").forEach(button => {
+    button.classList.remove("active");
+  });
+
+  currentCategory = null;
   currentQuestion = 0;
   correctAnswers = 0;
+  answered = false;
 
-  loadQuestion();
-  speak("Let's play again!", 0.85);
+  // Return to category menu
+  gameTitle.textContent = "Let's Play!";
+  categoryEmoji.textContent = "🌟";
+  questionProgress.textContent = "Choose a learning category";
+
+  question.textContent = "What would you like to learn?";
+  questionImage.className = "question-image";
+  questionImage.innerHTML = "🌈";
+
+  answers.innerHTML =
+    '<div class="answer-placeholder">Choose a category above</div>';
+
+  feedback.textContent = "Let's have fun learning!";
+  feedback.style.color = "#8c75a4";
+
+  nextButton.hidden = true;
+
+  speak("Choose what to learn!", 0.85);
+}
+
 }
 
 // FULLSCREEN
