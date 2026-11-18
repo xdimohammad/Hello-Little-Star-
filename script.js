@@ -900,7 +900,6 @@ function finishGame() {
   speak("Amazing work! You did a wonderful job!", 0.85);
 }
 
-function playAgain() {
   
 function playAgain() {
   completionOverlay.classList.remove("show");
