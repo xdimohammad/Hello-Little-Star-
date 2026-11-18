@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Hello, Little Star!</title>
+    <link rel="stylesheet" href="./style.css">
+
+  </head>
+    
+  <body>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">⭐</span>
+      <div>
+        <h1>Hello, Little Star!</h1>
+        <p>Let's learn and play!</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="star-count">⭐ <span id="starCount">0</span></div>
+      <button class="top-button" id="musicButton" aria-label="Toggle music">🎵</button>
+      <button class="top-button" id="fullscreenButton" aria-label="Fullscreen">⛶</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="welcome">
+      <div class="welcome-text">
+        <h2>Hello, Little Star! 🌈</h2>
+        <p>Are you ready to learn something fun?</p>
+      </div>
+      <div class="bunny-scene">
+        <div class="cloud cloud-one">☁️</div>
+        <div class="cloud cloud-two">☁️</div>
+        <div class="bunny" id="bunny">
+          <div class="bunny-ear ear-left"></div>
+          <div class="bunny-ear ear-right"></div>
+          <div class="bunny-face">
+            <div class="bunny-eye eye-left"></div>
+            <div class="bunny-eye eye-right"></div>
+            <div class="bunny-cheek cheek-left"></div>
+            <div class="bunny-cheek cheek-right"></div>
+            <div class="bunny-nose"></div>
+            <div class="bunny-mouth"></div>
+          </div>
+          <div class="bunny-body"></div>
+          <div class="bunny-paw paw-left"></div>
+          <div class="bunny-paw paw-right"></div>
+        </div>
+        <div class="bunny-shadow"></div>
+        <div class="flower flower-one">🌼</div>
+        <div class="flower flower-two">🌷</div>
+      </div>
+    </section>
+
+    <section class="category-section">
+      <h2 class="section-title">Choose What to Learn</h2>
+      <div class="category-grid">
+        <button class="category-card" data-category="colors">
+          <span>🎨</span><strong>Colors</strong>
+        </button>
+        <button class="category-card" data-category="animals">
+          <span>🐻</span><strong>Animals</strong>
+        </button>
+        <button class="category-card" data-category="shapes">
+          <span>🔺</span><strong>Shapes</strong>
+        </button>
+        <button class="category-card" data-category="fruits">
+          <span>🍎</span><strong>Fruits</strong>
+        </button>
+        <button class="category-card" data-category="numbers">
+          <span>🔢</span><strong>Numbers</strong>
+        </button>
+      </div>
+    </section>
+
+    <section class="game-card">
+      <div class="game-heading">
+        <span id="categoryEmoji">🌟</span>
+        <div>
+          <h2 id="gameTitle">Let's Play!</h2>
+          <p id="questionProgress">Choose a learning category</p>
+        </div>
+      </div>
+
+      <div class="question-area">
+        <div class="question" id="question">What would you like to learn?</div>
+        <div class="question-image" id="questionImage">🌈</div>
+        <div class="answers" id="answers">
+          <div class="answer-placeholder">Choose a category above</div>
+        </div>
+      </div>
+
+      <div class="feedback" id="feedback" aria-live="polite">
+        Let's have fun learning!
+      </div>
+      <button class="next-button" id="nextButton" hidden>Next Question ➜</button>
+    </section>
+
+    <section class="bottom-message">
+      <span>💖</span>
+      <p>Every little step is a big achievement!</p>
+      <span>🌟</span>
+    </section>
+  </main>
+
+  <div class="completion-overlay" id="completionOverlay">
+    <div class="completion-card">
+      <div class="completion-stars">🌟 🎉 🌟</div>
+      <div class="completion-bunny">🐰</div>
+      <h2>Amazing Work!</h2>
+      <p>You did a wonderful job!</p>
+      <div class="completion-score" id="completionScore">⭐ 5 Stars</div>
+      <button id="playAgainButton">Play Again 💖</button>
+    </div>
+  </div>
+</div>
+    <script  src="./script.js"></script>
+
+  </body>
+  
+</html>
