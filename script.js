@@ -16,6 +16,31 @@ const nextButton = $("nextButton");
 const completionOverlay = $("completionOverlay");
 const completionScore = $("completionScore");
 
+// HOME BUTTON
+const topActions = document.querySelector(".top-actions");
+const homeButton = document.createElement("button");
+
+homeButton.type = "button";
+homeButton.className = "top-button home-button";
+homeButton.textContent = "⌂";
+homeButton.title = "Back to Home";
+homeButton.setAttribute("aria-label", "Back to Home");
+homeButton.hidden = true;
+
+if (topActions) {
+  topActions.insertBefore(homeButton, musicButton);
+}
+
+// REMOVE OLD NAVIGATION BUTTONS
+if (nextButton) nextButton.remove();
+
+const oldPlayAgainButton = $("playAgainButton");
+if (oldPlayAgainButton) oldPlayAgainButton.remove();
+
+const oldPlayAgain = $("playAgain");
+if (oldPlayAgain) oldPlayAgain.remove();
+
+// GAME VARIABLES
 let stars = 0;
 let currentCategory = null;
 let currentQuestion = 0;
@@ -24,14 +49,96 @@ let answered = false;
 let praiseIndex = 0;
 let firstInteraction = false;
 
+let questionAdvanceTimer = null;
+let courseTransitionTimer = null;
+let countdownInterval = null;
+let courseTransitionLocked = false;
+
 let animalSoundPlaying = false;
 
+// PRAISE
 const praiseMessages = [
   "That's wonderful!",
   "Great job!"
 ];
 
+// =====================================
+// TWEMOJI VISUALS
+// =====================================
+
+function createEmojiImage(emoji, className) {
+  const image = document.createElement("img");
+
+  const code = Array.from(emoji)
+    .map(char => char.codePointAt(0).toString(16))
+    .filter(code => code !== "fe0f")
+    .join("-");
+
+  const primaryURL =
+    `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${code}.svg`;
+
+  const backupURL =
+    `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`;
+
+  image.src = primaryURL;
+  image.alt = emoji;
+  image.className = className || "twemoji-image";
+  image.draggable = false;
+  image.loading = "eager";
+  image.decoding = "async";
+
+  image.style.width = "1em";
+  image.style.height = "1em";
+  image.style.objectFit = "contain";
+  image.style.display = "inline-block";
+
+  image.onerror = () => {
+    if (image.src !== backupURL) {
+      image.src = backupURL;
+    }
+  };
+
+  return image;
+}
+
+function createEmojiGroup(emoji, count, className) {
+  const group = document.createElement("span");
+
+  group.className = className || "emoji-group";
+  group.style.display = "inline-flex";
+  group.style.alignItems = "center";
+  group.style.justifyContent = "center";
+  group.style.flexWrap = "wrap";
+  group.style.gap = "0.08em";
+
+  for (let i = 0; i < count; i++) {
+    group.appendChild(
+      createEmojiImage(emoji, "twemoji-image")
+    );
+  }
+
+  return group;
+}
+
+function setCategoryEmoji(emoji) {
+  categoryEmoji.innerHTML = "";
+
+  const image = createEmojiImage(
+    emoji,
+    "category-emoji-image"
+  );
+
+  image.style.width = "1.2em";
+  image.style.height = "1.2em";
+  image.style.verticalAlign = "middle";
+
+  categoryEmoji.appendChild(image);
+}
+
+// =====================================
 // ANIMAL IMAGE URLS
+// =====================================
+
 const animalImages = {
   cat: "https://raw.githubusercontent.com/xdimohammad/hello-little-star-assets/main/01_cat.png",
   dog: "https://raw.githubusercontent.com/xdimohammad/hello-little-star-assets/main/02_dog.png",
@@ -44,7 +151,10 @@ const animalImages = {
   monkey: "https://raw.githubusercontent.com/xdimohammad/hello-little-star-assets/main/09_monkey.png"
 };
 
+// =====================================
 // REAL ANIMAL RECORDINGS
+// =====================================
+
 const animalSoundFiles = {
   cat: "Meow.ogg",
   dog: "Barking of a dog 2.ogg",
@@ -69,7 +179,6 @@ Object.entries(animalSoundFiles).forEach(([animal, filename]) => {
   animalSounds[animal] = sound;
 });
 
-// PLAY REAL ANIMAL SOUND
 let currentAnimalSound = null;
 let animalSoundStopTimer = null;
 
@@ -102,6 +211,7 @@ function playAnimalSound(animal) {
 
     function finishSound() {
       if (finished) return;
+
       finished = true;
 
       if (animalSoundStopTimer) {
@@ -143,7 +253,10 @@ function playAnimalSound(animal) {
   });
 }
 
+// =====================================
 // GAME QUESTIONS
+// =====================================
+
 const games = {
   colors: {
     title: "Learn Colors",
@@ -301,7 +414,7 @@ const games = {
         correct: "star",
         choices: [
           { id: "circle", image: "🔴" },
-          { id: "oval", image: "🥚" },
+          { id: "oval", image: "oval" },
           { id: "star", image: "⭐" },
           { id: "square", image: "🟩" }
         ]
@@ -416,13 +529,17 @@ const games = {
   }
 };
 
+// =====================================
 // VOICE
+// =====================================
+
 function speak(text, rate = 0.82) {
   if (!("speechSynthesis" in window)) return;
 
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(text);
+
   utterance.lang = "en-US";
   utterance.rate = rate;
   utterance.pitch = 1.12;
@@ -447,7 +564,10 @@ function speak(text, rate = 0.82) {
   window.speechSynthesis.speak(utterance);
 }
 
+// =====================================
 // MUSIC
+// =====================================
+
 let audioContext = null;
 let masterMusicGain = null;
 let musicTimer = null;
@@ -469,6 +589,7 @@ function initializeAudio() {
     if (!AudioContextClass) return false;
 
     audioContext = new AudioContextClass();
+
     masterMusicGain = audioContext.createGain();
     masterMusicGain.gain.value = 0;
     masterMusicGain.connect(audioContext.destination);
@@ -491,6 +612,7 @@ function playMusicNote(frequency, duration = 0.42) {
   oscillator.frequency.value = frequency;
 
   noteGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+
   noteGain.gain.exponentialRampToValueAtTime(
     0.12,
     audioContext.currentTime + 0.06
@@ -584,7 +706,11 @@ function playWrongSound() {
   const gain = audioContext.createGain();
 
   oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+
+  oscillator.frequency.setValueAtTime(
+    300,
+    audioContext.currentTime
+  );
 
   oscillator.frequency.exponentialRampToValueAtTime(
     220,
@@ -605,7 +731,10 @@ function playWrongSound() {
   oscillator.stop(audioContext.currentTime + 0.21);
 }
 
+// =====================================
 // CREATE ANIMAL IMAGE
+// =====================================
+
 function createAnimalImage(animal, className) {
   const image = document.createElement("img");
 
@@ -627,14 +756,40 @@ function createAnimalImage(animal, className) {
   return image;
 }
 
+// =====================================
+// SHAPE ANSWER VISUAL
+// =====================================
+
+function createOvalShape() {
+  const oval = document.createElement("span");
+
+  oval.className = "answer-shape answer-oval";
+
+  oval.style.display = "block";
+  oval.style.width = "56px";
+  oval.style.height = "38px";
+  oval.style.flex = "0 0 56px";
+  oval.style.borderRadius = "50%";
+  oval.style.backgroundColor = "#F5C94E";
+  oval.style.border = "3px solid #DDAE35";
+  oval.style.boxSizing = "border-box";
+
+  return oval;
+}
+
+// =====================================
 // VISUAL ANSWER CREATION
+// =====================================
+
 function makeAnswerButton(choice, category) {
   const button = document.createElement("button");
+
   button.className = "answer-button";
 
   // COLORS
   if (category === "colors") {
     const visual = document.createElement("span");
+
     visual.className = "answer-color";
     visual.style.backgroundColor = choice.color;
 
@@ -661,9 +816,17 @@ function makeAnswerButton(choice, category) {
 
   // FRUITS
   else if (category === "fruits") {
-    const visual = document.createElement("span");
-    visual.className = "answer-emoji";
-    visual.textContent = choice.image;
+    const visual = createEmojiImage(
+      choice.image,
+      "answer-emoji"
+    );
+
+    visual.style.width = "56px";
+    visual.style.height = "56px";
+    visual.style.maxWidth = "56px";
+    visual.style.maxHeight = "56px";
+    visual.style.flex = "0 0 56px";
+    visual.style.objectFit = "contain";
 
     button.appendChild(visual);
     button.setAttribute("aria-label", choice.id);
@@ -672,9 +835,26 @@ function makeAnswerButton(choice, category) {
 
   // SHAPES
   else if (category === "shapes") {
-    const visual = document.createElement("span");
-    visual.className = "answer-shape";
-    visual.textContent = choice.image;
+    let visual;
+
+    if (choice.id === "oval") {
+      visual = createOvalShape();
+    } else {
+      visual = createEmojiImage(
+        choice.image,
+        "answer-shape"
+      );
+
+      const shapeSize =
+        choice.id === "triangle" ? "68px" : "56px";
+
+      visual.style.width = shapeSize;
+      visual.style.height = shapeSize;
+      visual.style.maxWidth = shapeSize;
+      visual.style.maxHeight = shapeSize;
+      visual.style.flex = `0 0 ${shapeSize}`;
+      visual.style.objectFit = "contain";
+    }
 
     button.appendChild(visual);
     button.setAttribute("aria-label", choice.id);
@@ -683,9 +863,14 @@ function makeAnswerButton(choice, category) {
 
   // NUMBERS
   else if (category === "numbers") {
-    const visual = document.createElement("span");
-    visual.className = "answer-number";
-    visual.textContent = choice.object.repeat(choice.count);
+    const visual = createEmojiGroup(
+      choice.object,
+      choice.count,
+      "answer-number"
+    );
+
+    visual.style.fontSize = "1.8rem";
+    visual.style.maxWidth = "100%";
 
     button.appendChild(visual);
     button.setAttribute("aria-label", String(choice.count));
@@ -697,7 +882,6 @@ function makeAnswerButton(choice, category) {
       ? Number(button.dataset.answer)
       : button.dataset.answer;
 
-    // ANIMALS: sound first, then wait 1 second, then feedback
     if (category === "animals") {
       if (answered || animalSoundPlaying) return;
 
@@ -723,8 +907,29 @@ function makeAnswerButton(choice, category) {
   return button;
 }
 
+// =====================================
 // GAME
+// =====================================
+
 function chooseCategory(category) {
+  if (questionAdvanceTimer) {
+    clearTimeout(questionAdvanceTimer);
+    questionAdvanceTimer = null;
+  }
+
+  if (courseTransitionTimer) {
+    clearTimeout(courseTransitionTimer);
+    courseTransitionTimer = null;
+  }
+
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+
+  courseTransitionLocked = false;
+  homeButton.hidden = false;
+
   if (currentAnimalSound) {
     currentAnimalSound.pause();
     currentAnimalSound.currentTime = 0;
@@ -751,12 +956,17 @@ function chooseCategory(category) {
   const game = games[category];
 
   gameTitle.textContent = game.title;
-  categoryEmoji.textContent = game.emoji;
+  setCategoryEmoji(game.emoji);
+
   completionOverlay.classList.remove("show");
 
   loadQuestion();
   speak(game.intro, 0.85);
 }
+
+// =====================================
+// LOAD QUESTION
+// =====================================
 
 function loadQuestion() {
   const game = games[currentCategory];
@@ -766,24 +976,37 @@ function loadQuestion() {
   animalSoundPlaying = false;
 
   question.textContent = item.prompt;
+
   questionImage.innerHTML = "";
   questionImage.className = "question-image";
 
+  // COLORS
   if (currentCategory === "colors") {
     questionImage.classList.add("color-target");
 
     const target = document.createElement("div");
+
     target.className = "target-color";
     target.style.backgroundColor = item.color;
 
     questionImage.appendChild(target);
   }
 
+  // NUMBERS
   else if (currentCategory === "numbers") {
-    questionImage.textContent = item.object.repeat(item.count);
+    const visual = createEmojiGroup(
+      item.object,
+      item.count,
+      "question-emoji-group"
+    );
+
+    visual.style.fontSize = "2.5rem";
+    visual.style.maxWidth = "100%";
+
+    questionImage.appendChild(visual);
   }
 
-  // ANIMAL QUESTION
+  // ANIMALS
   else if (currentCategory === "animals") {
     const animal = item.correct;
 
@@ -799,18 +1022,26 @@ function loadQuestion() {
     questionImage.appendChild(visual);
   }
 
+  // SHAPES AND FRUITS
   else {
-    questionImage.textContent = item.image;
+    const visual = createEmojiImage(
+      item.image,
+      "question-emoji-image"
+    );
+
+    visual.style.width = "5rem";
+    visual.style.height = "5rem";
+
+    questionImage.appendChild(visual);
   }
 
   questionProgress.textContent =
-    "Question " + (currentQuestion + 1) + " of " +
-    game.questions.length;
+    "Question " + (currentQuestion + 1) +
+    " of " + game.questions.length;
 
   feedback.textContent = "Can you find it?";
   feedback.style.color = "#8c75a4";
 
-  nextButton.hidden = true;
   answers.innerHTML = "";
 
   item.choices.forEach(choice => {
@@ -834,10 +1065,15 @@ function loadQuestion() {
   speak(item.spoken || item.prompt, 0.78);
 }
 
+// =====================================
+// CHECK ANSWER
+// =====================================
+
 function checkAnswer(selected, selectedButton) {
-  if (answered) return;
+  if (answered || !currentCategory || !games[currentCategory]) return;
 
   const item = games[currentCategory].questions[currentQuestion];
+
   const allButtons = answers.querySelectorAll(".answer-button");
 
   if (selected === item.correct) {
@@ -853,19 +1089,30 @@ function checkAnswer(selected, selectedButton) {
       button.disabled = true;
     });
 
-    feedback.textContent = "⭐ " + praiseMessages[praiseIndex];
+    feedback.textContent =
+      "⭐ " + praiseMessages[praiseIndex];
+
     feedback.style.color = "#43a36a";
 
     speak(praiseMessages[praiseIndex], 0.88);
-    praiseIndex = (praiseIndex + 1) % praiseMessages.length;
+
+    praiseIndex =
+      (praiseIndex + 1) % praiseMessages.length;
 
     playCorrectSound();
 
-    nextButton.hidden = false;
-    nextButton.textContent =
-      currentQuestion === games[currentCategory].questions.length - 1
-        ? "Finish 🎉"
-        : "Next Question ➜";
+    if (correctAnswers >= games[currentCategory].questions.length) {
+      showCourseCompletion();
+    } else {
+      if (questionAdvanceTimer) {
+        clearTimeout(questionAdvanceTimer);
+      }
+
+      questionAdvanceTimer = setTimeout(() => {
+        questionAdvanceTimer = null;
+        nextQuestion();
+      }, 1100);
+    }
 
   } else {
     selectedButton.classList.add("wrong");
@@ -879,8 +1126,12 @@ function checkAnswer(selected, selectedButton) {
   }
 }
 
+// =====================================
+// NEXT QUESTION
+// =====================================
+
 function nextQuestion() {
-  if (!answered) return;
+  if (!answered || !currentCategory) return;
 
   const total = games[currentCategory].questions.length;
 
@@ -888,22 +1139,108 @@ function nextQuestion() {
     currentQuestion++;
     loadQuestion();
   } else {
-    finishGame();
+    showCourseCompletion();
   }
 }
 
-function finishGame() {
-  completionScore.textContent = "⭐ " + correctAnswers + " Stars!";
+// =====================================
+// COURSE COMPLETION + COUNTDOWN
+// =====================================
+
+function showCourseCompletion() {
+  if (courseTransitionLocked || !currentCategory) return;
+
+  courseTransitionLocked = true;
+  homeButton.hidden = true;
+
+  let secondsLeft = 5;
+
+  completionScore.innerHTML = `
+    ⭐ ${correctAnswers} Stars!
+    <br>
+    Course completed!
+    <br>
+    Next course starts in
+    <br>
+    <span id="countdownNumber"
+      style="
+        display:inline-block;
+        font-size:3.5rem;
+        font-weight:900;
+        line-height:1.2;
+        color:#9b72d6;
+        margin-top:8px;
+      ">5</span>
+  `;
+
   completionOverlay.classList.add("show");
 
-  speak("Amazing work! You did a wonderful job!", 0.85);
+  speak(
+    "Amazing work! You completed this course! Let's try another course in five seconds!",
+    0.85
+  );
+
+  countdownInterval = setInterval(() => {
+    secondsLeft--;
+
+    const countdownNumber =
+      document.getElementById("countdownNumber");
+
+    if (countdownNumber) {
+      countdownNumber.textContent = secondsLeft;
+    }
+
+    if (secondsLeft <= 0) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }, 1000);
+
+  courseTransitionTimer = setTimeout(() => {
+    courseTransitionTimer = null;
+
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+
+    const otherCourses = Object.keys(games).filter(
+      category => category !== currentCategory
+    );
+
+    const randomCourse =
+      otherCourses[
+        Math.floor(Math.random() * otherCourses.length)
+      ];
+
+    courseTransitionLocked = false;
+    chooseCategory(randomCourse);
+
+  }, 5000);
 }
 
-// RETURN TO CATEGORY MENU
-function playAgain() {
-  completionOverlay.classList.remove("show");
+// =====================================
+// BACK TO HOME
+// =====================================
 
-  // Stop animal sound
+function goHome() {
+  if (courseTransitionLocked) return;
+
+  if (questionAdvanceTimer) {
+    clearTimeout(questionAdvanceTimer);
+    questionAdvanceTimer = null;
+  }
+
+  if (courseTransitionTimer) {
+    clearTimeout(courseTransitionTimer);
+    courseTransitionTimer = null;
+  }
+
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+
   if (currentAnimalSound) {
     currentAnimalSound.pause();
     currentAnimalSound.currentTime = 0;
@@ -915,31 +1252,38 @@ function playAgain() {
   }
 
   animalSoundPlaying = false;
+  courseTransitionLocked = false;
 
-  // Stop current voice
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
   }
 
-  // Remove selected category
+  completionOverlay.classList.remove("show");
+  homeButton.hidden = true;
+
   document.querySelectorAll(".category-card").forEach(button => {
     button.classList.remove("active");
   });
 
-  // Reset game state
   currentCategory = null;
   currentQuestion = 0;
   correctAnswers = 0;
   answered = false;
 
-  // Show category menu
   gameTitle.textContent = "Let's Play!";
-  categoryEmoji.textContent = "🌟";
+
+  setCategoryEmoji("🌟");
+
   questionProgress.textContent = "Choose a learning category";
 
   question.textContent = "What would you like to learn?";
+
   questionImage.className = "question-image";
-  questionImage.innerHTML = "🌈";
+  questionImage.innerHTML = "";
+
+  questionImage.appendChild(
+    createEmojiImage("🌈", "home-emoji-image")
+  );
 
   answers.innerHTML =
     '<div class="answer-placeholder">Choose a category above</div>';
@@ -947,12 +1291,13 @@ function playAgain() {
   feedback.textContent = "Let's have fun learning!";
   feedback.style.color = "#8c75a4";
 
-  nextButton.hidden = true;
-
   speak("Choose what to learn!", 0.85);
 }
 
+// =====================================
 // FULLSCREEN
+// =====================================
+
 async function toggleFullscreen() {
   try {
     if (!document.fullscreenElement) {
@@ -965,9 +1310,11 @@ async function toggleFullscreen() {
           // Orientation lock may not be supported.
         }
       }
+
     } else {
       await document.exitFullscreen();
     }
+
   } catch (error) {
     speak("Fullscreen is not available on this device.", 0.85);
   }
@@ -978,20 +1325,28 @@ document.addEventListener("fullscreenchange", () => {
     document.fullscreenElement ? "↙" : "⛶";
 });
 
+// =====================================
 // BUTTONS
+// =====================================
+
 document.querySelectorAll(".category-card").forEach(button => {
   button.addEventListener("click", () => {
+    if (courseTransitionLocked) return;
+
     chooseCategory(button.dataset.category);
   });
 });
 
-nextButton.addEventListener("click", nextQuestion);
+homeButton.addEventListener("click", goHome);
+
 musicButton.addEventListener("click", toggleMusic);
+
 fullscreenButton.addEventListener("click", toggleFullscreen);
 
-$("playAgainButton").addEventListener("click", playAgain);
-
+// =====================================
 // START MUSIC ON FIRST INTERACTION
+// =====================================
+
 document.addEventListener("pointerdown", event => {
   if (event.target.closest("#musicButton")) return;
 
@@ -1001,14 +1356,20 @@ document.addEventListener("pointerdown", event => {
   }
 }, { once: true });
 
+// =====================================
 // STOP MUSIC WHEN PAGE IS HIDDEN
+// =====================================
+
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && musicEnabled) {
     stopMusic();
   }
 });
 
+// =====================================
 // LOAD VOICES
+// =====================================
+
 if ("speechSynthesis" in window) {
   window.speechSynthesis.getVoices();
 }
